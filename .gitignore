@@ -44,3 +44,5 @@ Thumbs.db
 # Reports output
 output/
 reports/
+.env.example 
+node_modules

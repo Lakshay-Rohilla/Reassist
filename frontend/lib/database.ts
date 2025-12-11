@@ -1,6 +1,9 @@
 import { getSupabase, isSupabaseConfigured } from './supabase';
 import { ResearchReport, ReportSection } from './types';
 
+// Re-export for convenience
+export { isSupabaseConfigured } from './supabase';
+
 function getDb() {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY');

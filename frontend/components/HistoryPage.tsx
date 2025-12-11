@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -9,10 +9,10 @@ import {
     Clock,
     ChevronRight,
     Loader2,
-    Filter,
     CheckCircle,
     XCircle,
-    AlertCircle
+    AlertCircle,
+    Database
 } from 'lucide-react';
 import { useAuth } from './auth';
 import { getResearchHistory, searchQueries, DbResearchQuery } from '@/lib/database';
@@ -38,15 +38,9 @@ export function HistoryPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
-    const { user } = useAuth();
+    const { user, isConfigured } = useAuth();
 
-    useEffect(() => {
-        if (user) {
-            loadHistory();
-        }
-    }, [user]);
-
-    const loadHistory = async () => {
+    const loadHistory = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
@@ -54,10 +48,19 @@ export function HistoryPage() {
             setQueries(data || []);
         } catch (error) {
             console.error('Failed to load history:', error);
+            setQueries([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user && isConfigured) {
+            loadHistory();
+        } else {
+            setLoading(false);
+        }
+    }, [user, isConfigured, loadHistory]);
 
     const handleSearch = async () => {
         if (!user || !searchTerm.trim()) {
@@ -91,6 +94,26 @@ export function HistoryPage() {
         if (diffDays < 7) return `${diffDays} days ago`;
         return date.toLocaleDateString();
     };
+
+    // Check if Supabase is configured
+    if (!isConfigured) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <Database className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">Database Not Connected</h2>
+                    <p className="text-slate-600 mb-4">
+                        Supabase is not configured. Please add your Supabase credentials to
+                        <code className="bg-slate-100 px-2 py-1 rounded mx-1">.env.local</code>
+                    </p>
+                    <div className="text-left bg-slate-50 rounded-lg p-4 text-sm font-mono">
+                        <p className="text-slate-600">NEXT_PUBLIC_SUPABASE_URL=...</p>
+                        <p className="text-slate-600">NEXT_PUBLIC_SUPABASE_ANON_KEY=...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!user) {
         return (
@@ -141,8 +164,8 @@ export function HistoryPage() {
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === f
-                                    ? 'bg-primary-100 text-primary-700'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? 'bg-primary-100 text-primary-700'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                         >
                             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -175,7 +198,7 @@ export function HistoryPage() {
             {/* Query List */}
             {!loading && filteredQueries.length > 0 && (
                 <div className="space-y-4">
-                    {filteredQueries.map((query, index) => {
+                    {filteredQueries.map((query: QueryWithReport, index: number) => {
                         const status = statusConfig[query.status] || statusConfig.pending;
                         const StatusIcon = status.icon;
                         const report = query.research_reports?.[0];

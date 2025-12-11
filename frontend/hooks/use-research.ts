@@ -14,6 +14,13 @@ import {
     findMatchingReport,
     generateId
 } from '@/lib/mock-research';
+import { useAuth } from '@/components/auth';
+import {
+    createResearchQuery,
+    updateQueryStatus,
+    saveResearchReport,
+    isSupabaseConfigured
+} from '@/lib/database';
 
 const initialState: ResearchState = {
     phase: 'idle',
@@ -27,10 +34,13 @@ const initialState: ResearchState = {
 
 /**
  * Custom hook for managing research state and simulation
+ * Now with Supabase integration to save research data
  */
 export function useResearch() {
     const [state, setState] = useState<ResearchState>(initialState);
+    const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
     const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+    const { user } = useAuth();
 
     /**
      * Clear all pending timeouts
@@ -52,9 +62,26 @@ export function useResearch() {
     }, []);
 
     /**
+     * Save research to Supabase
+     */
+    const saveToDatabase = useCallback(async (queryId: string, report: ResearchReport) => {
+        try {
+            // Update query status to completed
+            await updateQueryStatus(queryId, 'completed', new Date());
+
+            // Save the report
+            await saveResearchReport(queryId, report);
+
+            console.log('Research saved to database successfully');
+        } catch (error) {
+            console.error('Failed to save research to database:', error);
+        }
+    }, []);
+
+    /**
      * Start a new research session
      */
-    const startResearch = useCallback((questionText: string) => {
+    const startResearch = useCallback(async (questionText: string) => {
         clearAllTimeouts();
 
         const question: ResearchQuestion = {
@@ -72,6 +99,21 @@ export function useResearch() {
             error: null,
             sourcesAnalyzed: 0,
         }));
+
+        // Save query to Supabase if user is logged in
+        let queryId: string | null = null;
+        if (user) {
+            try {
+                const query = await createResearchQuery(user.id, questionText);
+                queryId = query.id;
+                setCurrentQueryId(queryId);
+
+                // Update status to researching
+                await updateQueryStatus(queryId, 'researching');
+            } catch (error) {
+                console.error('Failed to save query to database:', error);
+            }
+        }
 
         // Simulate progress updates over time
         let sourcesCount = 0;
@@ -97,8 +139,13 @@ export function useResearch() {
         });
 
         // Complete research after all progress updates
-        const completionTimeout = setTimeout(() => {
+        const completionTimeout = setTimeout(async () => {
             const report = findMatchingReport(questionText);
+
+            // Save to database if user is logged in and we have a query ID
+            if (user && queryId) {
+                await saveToDatabase(queryId, report);
+            }
 
             setState(prev => {
                 const entry: ConversationEntry = {
@@ -117,7 +164,7 @@ export function useResearch() {
         }, (progressMessages.length + 1) * 2500);
 
         timeoutsRef.current.push(completionTimeout);
-    }, [clearAllTimeouts, addProgressUpdate]);
+    }, [clearAllTimeouts, addProgressUpdate, user, saveToDatabase]);
 
     /**
      * Submit a follow-up question
@@ -132,6 +179,7 @@ export function useResearch() {
      */
     const reset = useCallback(() => {
         clearAllTimeouts();
+        setCurrentQueryId(null);
         setState(initialState);
     }, [clearAllTimeouts]);
 
@@ -153,6 +201,7 @@ export function useResearch() {
         submitFollowUp,
         reset,
         setError,
+        currentQueryId,
         isIdle: state.phase === 'idle',
         isResearching: state.phase === 'researching',
         isCompleted: state.phase === 'completed',

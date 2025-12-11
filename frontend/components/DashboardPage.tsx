@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -12,7 +12,8 @@ import {
     ArrowRight,
     Loader2,
     BarChart3,
-    Calendar
+    Calendar,
+    Database
 } from 'lucide-react';
 import { useAuth } from './auth';
 import { getResearchHistory, getSavedReports, getUserStats } from '@/lib/database';
@@ -27,15 +28,9 @@ export function DashboardPage() {
     const [recentQueries, setRecentQueries] = useState<any[]>([]);
     const [savedReports, setSavedReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const { user } = useAuth();
+    const { user, isConfigured } = useAuth();
 
-    useEffect(() => {
-        if (user) {
-            loadDashboardData();
-        }
-    }, [user]);
-
-    const loadDashboardData = async () => {
+    const loadDashboardData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
@@ -53,7 +48,15 @@ export function DashboardPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user && isConfigured) {
+            loadDashboardData();
+        } else {
+            setLoading(false);
+        }
+    }, [user, isConfigured, loadDashboardData]);
 
     const statCards = [
         {
@@ -85,6 +88,26 @@ export function DashboardPage() {
             textColor: 'text-orange-600'
         },
     ];
+
+    // Check if Supabase is configured
+    if (!isConfigured) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <Database className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">Database Not Connected</h2>
+                    <p className="text-slate-600 mb-4">
+                        Supabase is not configured. Please add your Supabase credentials to
+                        <code className="bg-slate-100 px-2 py-1 rounded mx-1">.env.local</code>
+                    </p>
+                    <div className="text-left bg-slate-50 rounded-lg p-4 text-sm font-mono">
+                        <p className="text-slate-600">NEXT_PUBLIC_SUPABASE_URL=...</p>
+                        <p className="text-slate-600">NEXT_PUBLIC_SUPABASE_ANON_KEY=...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -177,8 +200,8 @@ export function DashboardPage() {
                                         <Clock className="w-3 h-3" />
                                         <span>{new Date(query.created_at).toLocaleDateString()}</span>
                                         <span className={`px-2 py-0.5 rounded-full ${query.status === 'completed'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-yellow-100 text-yellow-700'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-yellow-100 text-yellow-700'
                                             }`}>
                                             {query.status}
                                         </span>

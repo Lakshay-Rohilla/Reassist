@@ -61,7 +61,7 @@ class AnthropicClient(BaseLLMClient):
         try:
             response = await client.messages.create(
                 model=self.settings.llm_model,
-                max_tokens=4096,
+                max_tokens=12288,
                 system=system,
                 messages=[{"role": "user", "content": user}]
             )
@@ -110,7 +110,7 @@ class OpenAIClient(BaseLLMClient):
         create_kwargs: dict[str, Any] = {
             "model": self.settings.llm_model,
             "messages": messages,
-            "max_tokens": 4096,
+            "max_tokens": 12288,
         }
         
         if response_format == "json":

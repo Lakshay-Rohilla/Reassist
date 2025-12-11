@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { AuthProvider } from '@/components/auth'
+import { Navbar } from '@/components/Navbar'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -21,9 +23,12 @@ export default function RootLayout({
     return (
         <html lang="en" className={inter.variable}>
             <body className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 antialiased">
-                <div className="min-h-screen">
-                    {children}
-                </div>
+                <AuthProvider>
+                    <Navbar />
+                    <main className="min-h-screen">
+                        {children}
+                    </main>
+                </AuthProvider>
             </body>
         </html>
     )

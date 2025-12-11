@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     User,
@@ -11,51 +11,84 @@ import {
     LogOut,
     Loader2,
     Check,
-    Monitor
+    Monitor,
+    Database
 } from 'lucide-react';
 import { useAuth } from './auth';
 import { getUserPreferences, upsertUserPreferences, DbUserPreferences } from '@/lib/database';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+type Theme = 'light' | 'dark' | 'system';
+type SearchDepth = 'quick' | 'standard' | 'comprehensive';
+
+interface LocalPreferences {
+    theme: Theme;
+    default_search_depth: SearchDepth;
+    email_notifications: boolean;
+}
+
+const defaultPreferences: LocalPreferences = {
+    theme: 'light',
+    default_search_depth: 'standard',
+    email_notifications: true,
+};
 
 export function SettingsPage() {
-    const [preferences, setPreferences] = useState<DbUserPreferences | null>(null);
+    const [preferences, setPreferences] = useState<LocalPreferences>(defaultPreferences);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-    const { user, signOut } = useAuth();
+    const { user, isConfigured, signOut } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        if (user) {
-            loadPreferences();
+    const loadPreferences = useCallback(async () => {
+        if (!user || !isConfigured) {
+            setLoading(false);
+            return;
         }
-    }, [user]);
-
-    const loadPreferences = async () => {
-        if (!user) return;
         try {
             const data = await getUserPreferences(user.id);
-            setPreferences(data);
+            if (data) {
+                setPreferences({
+                    theme: data.theme || 'light',
+                    default_search_depth: data.default_search_depth || 'standard',
+                    email_notifications: data.email_notifications ?? true,
+                });
+            }
         } catch (error) {
             console.error('Failed to load preferences:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, isConfigured]);
 
-    const updatePreference = async <K extends keyof DbUserPreferences>(
+    useEffect(() => {
+        if (user && isConfigured) {
+            loadPreferences();
+        } else {
+            setLoading(false);
+        }
+    }, [user, isConfigured, loadPreferences]);
+
+    const updatePreference = async <K extends keyof LocalPreferences>(
         key: K,
-        value: DbUserPreferences[K]
+        value: LocalPreferences[K]
     ) => {
-        if (!user) return;
+        // Update local state immediately for responsive UI
+        setPreferences(prev => ({ ...prev, [key]: value }));
+
+        if (!user || !isConfigured) return;
+
         setSaving(true);
         try {
-            const updated = await upsertUserPreferences(user.id, { [key]: value });
-            setPreferences(updated);
+            await upsertUserPreferences(user.id, { [key]: value } as Partial<DbUserPreferences>);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
         } catch (error) {
             console.error('Failed to update preference:', error);
+            // Revert on error
+            setPreferences(prev => ({ ...prev, [key]: preferences[key] }));
         } finally {
             setSaving(false);
         }
@@ -66,25 +99,48 @@ export function SettingsPage() {
         router.push('/login');
     };
 
-    if (!user) {
+    // Check if Supabase is configured
+    if (!isConfigured) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <p className="text-slate-600">Please sign in to view settings.</p>
+                <div className="text-center max-w-md">
+                    <Database className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">Database Not Connected</h2>
+                    <p className="text-slate-600 mb-4">
+                        Supabase is not configured. Please add your Supabase credentials to
+                        <code className="bg-slate-100 px-2 py-1 rounded mx-1">.env.local</code>
+                    </p>
+                </div>
             </div>
         );
     }
 
-    const themeOptions = [
+    if (!user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2">Sign in required</h2>
+                    <p className="text-slate-600 mb-4">Please sign in to view settings.</p>
+                    <Link href="/login" className="btn-primary">
+                        Sign In
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
         { value: 'light', label: 'Light', icon: Sun },
         { value: 'dark', label: 'Dark', icon: Moon },
         { value: 'system', label: 'System', icon: Monitor },
-    ] as const;
+    ];
 
-    const depthOptions = [
+    const depthOptions: { value: SearchDepth; label: string; description: string }[] = [
         { value: 'quick', label: 'Quick', description: 'Fast results, fewer sources' },
         { value: 'standard', label: 'Standard', description: 'Balanced speed and depth' },
         { value: 'comprehensive', label: 'Comprehensive', description: 'Thorough research, more time' },
-    ] as const;
+    ];
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-8">
@@ -167,18 +223,19 @@ export function SettingsPage() {
                             <label className="block text-sm font-medium text-slate-700 mb-3">Theme</label>
                             <div className="grid grid-cols-3 gap-3">
                                 {themeOptions.map((option) => {
-                                    const current = preferences?.theme || 'light';
-                                    const isSelected = current === option.value;
+                                    const isSelected = preferences.theme === option.value;
+                                    const IconComponent = option.icon;
                                     return (
                                         <button
                                             key={option.value}
+                                            type="button"
                                             onClick={() => updatePreference('theme', option.value)}
                                             className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${isSelected
-                                                    ? 'border-primary-500 bg-primary-50'
-                                                    : 'border-slate-200 hover:border-slate-300'
+                                                ? 'border-primary-500 bg-primary-50'
+                                                : 'border-slate-200 hover:border-slate-300'
                                                 }`}
                                         >
-                                            <option.icon className={`w-6 h-6 ${isSelected ? 'text-primary-600' : 'text-slate-500'}`} />
+                                            <IconComponent className={`w-6 h-6 ${isSelected ? 'text-primary-600' : 'text-slate-500'}`} />
                                             <span className={`text-sm font-medium ${isSelected ? 'text-primary-700' : 'text-slate-600'}`}>
                                                 {option.label}
                                             </span>
@@ -204,25 +261,25 @@ export function SettingsPage() {
                             <label className="block text-sm font-medium text-slate-700 mb-3">Default Search Depth</label>
                             <div className="space-y-2">
                                 {depthOptions.map((option) => {
-                                    const current = preferences?.default_search_depth || 'standard';
-                                    const isSelected = current === option.value;
+                                    const isSelected = preferences.default_search_depth === option.value;
                                     return (
                                         <button
                                             key={option.value}
+                                            type="button"
                                             onClick={() => updatePreference('default_search_depth', option.value)}
-                                            className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isSelected
-                                                    ? 'border-primary-500 bg-primary-50'
-                                                    : 'border-slate-200 hover:border-slate-300'
+                                            className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${isSelected
+                                                ? 'border-primary-500 bg-primary-50'
+                                                : 'border-slate-200 hover:border-slate-300'
                                                 }`}
                                         >
-                                            <div className="text-left">
+                                            <div>
                                                 <p className={`font-medium ${isSelected ? 'text-primary-700' : 'text-slate-700'}`}>
                                                     {option.label}
                                                 </p>
                                                 <p className="text-sm text-slate-500">{option.description}</p>
                                             </div>
                                             {isSelected && (
-                                                <Check className="w-5 h-5 text-primary-600" />
+                                                <Check className="w-5 h-5 text-primary-600 flex-shrink-0" />
                                             )}
                                         </button>
                                     );
@@ -242,25 +299,28 @@ export function SettingsPage() {
                             <Bell className="w-5 h-5 text-primary-500" />
                             Notifications
                         </h2>
-                        <label className="flex items-center justify-between cursor-pointer">
+                        <div className="flex items-center justify-between">
                             <div>
                                 <p className="font-medium text-slate-700">Email Notifications</p>
                                 <p className="text-sm text-slate-500">Get notified when research is complete</p>
                             </div>
                             <button
-                                onClick={() => updatePreference('email_notifications', !preferences?.email_notifications)}
-                                className={`relative w-12 h-6 rounded-full transition-colors ${preferences?.email_notifications ? 'bg-primary-500' : 'bg-slate-300'
+                                type="button"
+                                role="switch"
+                                aria-checked={preferences.email_notifications}
+                                onClick={() => updatePreference('email_notifications', !preferences.email_notifications)}
+                                className={`relative w-14 h-7 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${preferences.email_notifications ? 'bg-primary-500' : 'bg-slate-300'
                                     }`}
                             >
                                 <span
-                                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${preferences?.email_notifications ? 'translate-x-7' : 'translate-x-1'
+                                    className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200 ${preferences.email_notifications ? 'left-7' : 'left-0.5'
                                         }`}
                                 />
                             </button>
-                        </label>
+                        </div>
                     </motion.div>
 
-                    {/* Danger Zone */}
+                    {/* Account Section */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -269,6 +329,7 @@ export function SettingsPage() {
                     >
                         <h2 className="text-lg font-semibold text-slate-800 mb-4">Account</h2>
                         <button
+                            type="button"
                             onClick={handleSignOut}
                             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >

@@ -7,8 +7,7 @@ import {
     Twitter,
     Linkedin,
     Mail,
-    Heart,
-    ExternalLink
+    Heart
 } from 'lucide-react';
 
 const footerLinks = {
@@ -17,18 +16,6 @@ const footerLinks = {
         { label: 'History', href: '/history' },
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'Settings', href: '/settings' },
-    ],
-    resources: [
-        { label: 'Documentation', href: '#' },
-        { label: 'API Reference', href: '#' },
-        { label: 'Changelog', href: '#' },
-        { label: 'Roadmap', href: '#' },
-    ],
-    company: [
-        { label: 'About', href: '#' },
-        { label: 'Blog', href: '#' },
-        { label: 'Careers', href: '#' },
-        { label: 'Contact', href: '#' },
     ],
     legal: [
         { label: 'Privacy Policy', href: '#' },
@@ -51,7 +38,7 @@ export function Footer() {
         <footer className="bg-slate-900 text-slate-300 mt-auto">
             {/* Main Footer Content */}
             <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                     {/* Brand Section */}
                     <div className="col-span-2">
                         <Link href="/" className="flex items-center gap-2 mb-4">
@@ -88,43 +75,6 @@ export function Footer() {
                         <h3 className="text-white font-semibold mb-4">Product</h3>
                         <ul className="space-y-2">
                             {footerLinks.product.map((link) => (
-                                <li key={link.label}>
-                                    <Link
-                                        href={link.href}
-                                        className="text-sm hover:text-white transition-colors"
-                                    >
-                                        {link.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Resources Links */}
-                    <div>
-                        <h3 className="text-white font-semibold mb-4">Resources</h3>
-                        <ul className="space-y-2">
-                            {footerLinks.resources.map((link) => (
-                                <li key={link.label}>
-                                    <Link
-                                        href={link.href}
-                                        className="text-sm hover:text-white transition-colors flex items-center gap-1"
-                                    >
-                                        {link.label}
-                                        {link.href.startsWith('http') && (
-                                            <ExternalLink className="w-3 h-3" />
-                                        )}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Company Links */}
-                    <div>
-                        <h3 className="text-white font-semibold mb-4">Company</h3>
-                        <ul className="space-y-2">
-                            {footerLinks.company.map((link) => (
                                 <li key={link.label}>
                                     <Link
                                         href={link.href}

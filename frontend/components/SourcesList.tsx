@@ -7,7 +7,13 @@ import {
     Newspaper,
     GraduationCap,
     Building2,
-    BookOpen
+    BookOpen,
+    Landmark,
+    Users,
+    TrendingUp,
+    Shield,
+    ShieldCheck,
+    ShieldAlert
 } from 'lucide-react';
 import { Source } from '@/lib/types';
 
@@ -15,28 +21,46 @@ interface SourcesListProps {
     sources: Source[];
 }
 
-const typeIcons = {
+const typeIcons: Record<string, typeof FileText> = {
     article: BookOpen,
     report: FileText,
     paper: GraduationCap,
     news: Newspaper,
     company: Building2,
+    academic: GraduationCap,
+    industry: TrendingUp,
+    government: Landmark,
+    expert: Users,
 };
 
-const typeLabels = {
+const typeLabels: Record<string, string> = {
     article: 'Article',
     report: 'Report',
     paper: 'Research Paper',
     news: 'News',
     company: 'Company Source',
+    academic: 'Academic',
+    industry: 'Industry Report',
+    government: 'Government',
+    expert: 'Expert Opinion',
 };
 
-const typeColors = {
+const typeColors: Record<string, string> = {
     article: 'text-blue-600 bg-blue-50 border-blue-100',
     report: 'text-purple-600 bg-purple-50 border-purple-100',
     paper: 'text-green-600 bg-green-50 border-green-100',
     news: 'text-orange-600 bg-orange-50 border-orange-100',
     company: 'text-slate-600 bg-slate-50 border-slate-100',
+    academic: 'text-emerald-600 bg-emerald-50 border-emerald-100',
+    industry: 'text-indigo-600 bg-indigo-50 border-indigo-100',
+    government: 'text-red-600 bg-red-50 border-red-100',
+    expert: 'text-cyan-600 bg-cyan-50 border-cyan-100',
+};
+
+const reliabilityConfig: Record<string, { icon: typeof Shield; color: string; label: string }> = {
+    high: { icon: ShieldCheck, color: 'text-green-600', label: 'High Reliability' },
+    medium: { icon: Shield, color: 'text-yellow-600', label: 'Medium Reliability' },
+    low: { icon: ShieldAlert, color: 'text-red-600', label: 'Low Reliability' },
 };
 
 /**
@@ -59,6 +83,7 @@ export function SourcesList({ sources }: SourcesListProps) {
                     const Icon = typeIcons[source.type] || FileText;
                     const label = typeLabels[source.type] || 'Source';
                     const colorClass = typeColors[source.type] || typeColors.article;
+                    const reliability = source.reliability ? reliabilityConfig[source.reliability] : null;
 
                     return (
                         <motion.div
@@ -87,12 +112,32 @@ export function SourcesList({ sources }: SourcesListProps) {
                                             {source.title}
                                         </a>
 
+                                        {/* Description */}
+                                        {source.description && (
+                                            <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                                                {source.description}
+                                            </p>
+                                        )}
+
                                         <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
                                             {source.author && (
                                                 <span>{source.author}</span>
                                             )}
-                                            <span>•</span>
-                                            <span>{source.publishedDate}</span>
+                                            {source.author && source.publishedDate && (
+                                                <span>•</span>
+                                            )}
+                                            {source.publishedDate && (
+                                                <span>{source.publishedDate}</span>
+                                            )}
+                                            {reliability && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className={`flex items-center gap-1 ${reliability.color}`}>
+                                                        <reliability.icon className="w-3.5 h-3.5" />
+                                                        {reliability.label}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
@@ -125,3 +170,4 @@ export function SourcesList({ sources }: SourcesListProps) {
         </motion.div>
     );
 }
+

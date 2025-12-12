@@ -308,6 +308,84 @@ export const exampleQuestions: string[] = [
 ];
 
 /**
+ * Generate a dynamic report based on the question topic
+ */
+function generateDynamicReport(question: string): ResearchReport {
+    // Generate a topic-aware executive summary
+    const topicSummary = `This research explores the key aspects of "${question}". The analysis draws from multiple credible sources including academic papers, industry reports, and expert analyses to provide a comprehensive overview of the current state and emerging trends in this area.
+
+Based on the available data, several important patterns and insights have emerged that are directly relevant to understanding this topic. The findings are organized into thematic sections covering the primary areas of interest, supported by citations from authoritative sources.
+
+The research methodology involved systematic analysis of recent publications, cross-referencing of multiple data sources, and synthesis of expert perspectives. While this provides a solid foundation for understanding the topic, some knowledge gaps remain that may warrant further investigation.`;
+
+    return {
+        id: `report-dynamic-${Date.now()}`,
+        question: question,
+        executiveSummary: topicSummary,
+        sections: [
+            {
+                id: 'section-1',
+                title: 'Overview and Current State',
+                content: `This section provides an overview of "${question}" based on the latest available research and analysis. The topic has garnered significant attention in recent studies, with researchers exploring various dimensions and implications.
+
+Current understanding suggests that this area is evolving rapidly, with new developments and insights emerging regularly. Key stakeholders are actively engaged in advancing knowledge and practice in this domain.[1]
+
+The analysis of existing literature and reports indicates several areas of consensus among experts, as well as some points of ongoing debate that merit further investigation.[2]`,
+                citations: [1, 2]
+            },
+            {
+                id: 'section-2',
+                title: 'Key Trends and Developments',
+                content: `Recent developments related to "${question}" reflect broader shifts in the field. Several notable trends have been identified through analysis of current research and industry reports.
+
+Emerging patterns suggest growing interest and investment in this area, with stakeholders from various sectors contributing to the discourse. The pace of change appears to be accelerating, driven by technological, economic, and social factors.[3]
+
+Experts anticipate continued evolution in the coming years, with potential implications for policy, practice, and research priorities.[4]`,
+                citations: [3, 4]
+            },
+            {
+                id: 'section-3',
+                title: 'Challenges and Opportunities',
+                content: `The research has identified several challenges associated with "${question}" that warrant attention. These include complex technical considerations, resource constraints, and the need for coordinated approaches among stakeholders.
+
+At the same time, significant opportunities exist for advancement and innovation. Organizations and individuals actively engaged in this space have demonstrated various approaches to addressing challenges while capitalizing on emerging possibilities.[5]
+
+Future progress will likely depend on continued research, collaboration, and adaptive strategies that respond to evolving conditions.[6]`,
+                citations: [5, 6]
+            },
+            {
+                id: 'section-4',
+                title: 'Conclusions and Recommendations',
+                content: `Based on the comprehensive analysis conducted for "${question}", several conclusions can be drawn. The evidence suggests that this is an area of active development with significant potential for impact.
+
+Key recommendations for stakeholders include staying informed about emerging trends, engaging with relevant research and practice communities, and considering how developments in this area may affect their specific contexts.[7]
+
+Continued monitoring of this topic is advisable, as the landscape is likely to evolve in response to new discoveries, technologies, and societal needs.[8]`,
+                citations: [7, 8]
+            }
+        ],
+        knowledgeGaps: [
+            'Further research may be needed to fully understand all dimensions of this topic',
+            'Some data sources may not reflect the most recent developments',
+            'Regional variations and context-specific factors may not be fully captured',
+            'Emerging trends may shift the landscape in ways not yet documented'
+        ],
+        sources: [
+            { id: 1, title: 'Research Overview and Analysis', url: 'https://example.com/research-1', publishedDate: new Date().toISOString().split('T')[0], type: 'article' },
+            { id: 2, title: 'Literature Review and Synthesis', url: 'https://example.com/research-2', publishedDate: new Date().toISOString().split('T')[0], type: 'paper' },
+            { id: 3, title: 'Industry Trends Report', url: 'https://example.com/report-1', publishedDate: new Date().toISOString().split('T')[0], type: 'report' },
+            { id: 4, title: 'Expert Analysis and Perspectives', url: 'https://example.com/analysis-1', publishedDate: new Date().toISOString().split('T')[0], type: 'article' },
+            { id: 5, title: 'Challenges and Solutions Overview', url: 'https://example.com/research-3', publishedDate: new Date().toISOString().split('T')[0], type: 'report' },
+            { id: 6, title: 'Opportunities Assessment', url: 'https://example.com/assessment-1', publishedDate: new Date().toISOString().split('T')[0], type: 'report' },
+            { id: 7, title: 'Recommendations and Best Practices', url: 'https://example.com/best-practices', publishedDate: new Date().toISOString().split('T')[0], type: 'article' },
+            { id: 8, title: 'Future Outlook and Projections', url: 'https://example.com/outlook', publishedDate: new Date().toISOString().split('T')[0], type: 'report' }
+        ],
+        generatedAt: new Date(),
+        researchDuration: Math.floor(Math.random() * 30) + 30 // Random duration between 30-60 seconds
+    };
+}
+
+/**
  * Find the best matching sample report for a given question
  */
 export function findMatchingReport(question: string): ResearchReport {
@@ -319,8 +397,8 @@ export function findMatchingReport(question: string): ResearchReport {
         }
     }
 
-    // Default to EV battery report if no match found
-    return { ...evBatteryReport, question, generatedAt: new Date() };
+    // Generate dynamic content based on the actual question
+    return generateDynamicReport(question);
 }
 
 /**

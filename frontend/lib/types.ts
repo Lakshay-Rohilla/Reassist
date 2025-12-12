@@ -32,7 +32,24 @@ export interface Source {
     url: string;
     publishedDate: string;
     author?: string;
-    type: 'article' | 'report' | 'paper' | 'news' | 'company';
+    description?: string;
+    reliability?: 'high' | 'medium' | 'low';
+    type: 'article' | 'report' | 'paper' | 'news' | 'company' | 'academic' | 'industry' | 'government' | 'expert';
+}
+
+/** A key statistic from the research */
+export interface KeyStatistic {
+    value: string;
+    context: string;
+}
+
+/** Research metadata with enhanced fields */
+export interface ResearchMetadata {
+    sourcesAnalyzed: number;
+    confidenceLevel: 'high' | 'medium' | 'low';
+    topicComplexity?: 'low' | 'medium' | 'high';
+    dataRecency?: string;
+    lastUpdated: string;
 }
 
 /** A section within the research report */
@@ -51,6 +68,10 @@ export interface ResearchReport {
     sections: ReportSection[];
     knowledgeGaps: string[];
     sources: Source[];
+    keyStatistics?: KeyStatistic[];
+    followUpQuestions?: string[];
+    qualityScore?: number;
+    researchMetadata?: ResearchMetadata;
     generatedAt: Date;
     researchDuration: number; // in seconds
 }

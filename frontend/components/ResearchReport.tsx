@@ -6,7 +6,9 @@ import {
     FileText,
     AlertTriangle,
     ChevronRight,
-    Sparkles
+    Sparkles,
+    BarChart3,
+    TrendingUp
 } from 'lucide-react';
 import { ResearchReport as ResearchReportType } from '@/lib/types';
 import { Citation, InlineCitations } from './Citation';
@@ -107,6 +109,12 @@ export function ResearchReport({
                         <FileText className="w-4 h-4" />
                         <span>{report.sources.length} sources analyzed</span>
                     </div>
+                    {report.qualityScore && (
+                        <div className="flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4" />
+                            <span>Quality: {Math.round(report.qualityScore * 100)}%</span>
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -132,6 +140,47 @@ export function ResearchReport({
                     </div>
                 </div>
             </motion.section>
+
+            {/* Key Statistics */}
+            {report.keyStatistics && report.keyStatistics.length > 0 && (
+                <motion.section
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="mb-10"
+                >
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full" />
+                        <h2 className="text-2xl font-bold text-slate-800">Key Statistics</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {report.keyStatistics.map((stat, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.15 + index * 0.05 }}
+                                className="bg-white border border-slate-100 rounded-xl p-5 hover:shadow-lg transition-shadow"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                                        <BarChart3 className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-slate-800 mb-1">
+                                            {stat.value}
+                                        </p>
+                                        <p className="text-sm text-slate-600 leading-relaxed">
+                                            {stat.context}
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.section>
+            )}
 
             {/* Detailed Sections */}
             <motion.div

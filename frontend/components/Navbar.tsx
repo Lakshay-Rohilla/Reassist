@@ -23,7 +23,7 @@ export function Navbar() {
     }
 
     return (
-        <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+        <nav className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
@@ -39,8 +39,8 @@ export function Navbar() {
                                 key={link.href}
                                 href={link.href}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === link.href
-                                        ? 'bg-primary-50 text-primary-700'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 {link.label}
@@ -51,14 +51,14 @@ export function Navbar() {
                     {/* Auth Section */}
                     <div className="hidden md:flex items-center gap-4">
                         {loading ? (
-                            <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse" />
+                            <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse" />
                         ) : user ? (
                             <UserMenu />
                         ) : (
                             <div className="flex items-center gap-3">
                                 <Link
                                     href="/login"
-                                    className="text-sm font-medium text-slate-600 hover:text-slate-900"
+                                    className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                                 >
                                     Sign In
                                 </Link>
@@ -72,7 +72,7 @@ export function Navbar() {
                     {/* Mobile Menu Button */}
                     <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 text-slate-600 hover:text-slate-900"
+                        className="md:hidden p-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     >
                         {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                     </button>
@@ -81,7 +81,7 @@ export function Navbar() {
 
             {/* Mobile Menu */}
             {mobileMenuOpen && (
-                <div className="md:hidden bg-white border-b border-slate-100">
+                <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
                     <div className="px-4 py-4 space-y-2">
                         {navLinks.map((link) => (
                             <Link
@@ -89,8 +89,8 @@ export function Navbar() {
                                 href={link.href}
                                 onClick={() => setMobileMenuOpen(false)}
                                 className={`block px-4 py-2 rounded-lg text-sm font-medium ${pathname === link.href
-                                        ? 'bg-primary-50 text-primary-700'
-                                        : 'text-slate-600 hover:bg-slate-50'
+                                    ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300'
+                                    : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 {link.label}
@@ -98,11 +98,11 @@ export function Navbar() {
                         ))}
 
                         {!user && (
-                            <div className="pt-4 border-t border-slate-100 space-y-2">
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
                                 <Link
                                     href="/login"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block w-full text-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg"
+                                    className="block w-full text-center px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800 rounded-lg"
                                 >
                                     Sign In
                                 </Link>

@@ -3,23 +3,18 @@
 import { useState, useCallback, useRef } from 'react';
 import {
     ResearchState,
-    ResearchPhase,
     ProgressUpdate,
     ResearchReport,
     ResearchQuestion,
     ConversationEntry
 } from '@/lib/types';
-import {
-    progressMessages,
-    findMatchingReport,
-    generateId
-} from '@/lib/mock-research';
+import { generateId } from '@/lib/mock-research';
 import { useAuth } from '@/components/auth';
 import {
     createResearchQuery,
     updateQueryStatus,
     saveResearchReport,
-    isSupabaseConfigured
+    getUserPreferences
 } from '@/lib/database';
 
 const initialState: ResearchState = {
@@ -32,22 +27,34 @@ const initialState: ResearchState = {
     sourcesAnalyzed: 0,
 };
 
+// Progress messages to show during research
+const progressSteps = [
+    { message: 'Analyzing your research question...', type: 'analyze' as const },
+    { message: 'Searching for relevant information...', type: 'search' as const },
+    { message: 'Evaluating source credibility...', type: 'analyze' as const },
+    { message: 'Cross-referencing data points...', type: 'analyze' as const },
+    { message: 'Synthesizing findings...', type: 'synthesize' as const },
+    { message: 'Generating comprehensive report...', type: 'synthesize' as const },
+];
+
 /**
- * Custom hook for managing research state and simulation
- * Now with Supabase integration to save research data
+ * Custom hook for managing research state
+ * Uses real OpenAI API for research generation
  */
 export function useResearch() {
     const [state, setState] = useState<ResearchState>(initialState);
     const [currentQueryId, setCurrentQueryId] = useState<string | null>(null);
-    const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+    const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const { user } = useAuth();
 
     /**
-     * Clear all pending timeouts
+     * Clear progress interval
      */
-    const clearAllTimeouts = useCallback(() => {
-        timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
-        timeoutsRef.current = [];
+    const clearProgress = useCallback(() => {
+        if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+        }
     }, []);
 
     /**
@@ -66,12 +73,8 @@ export function useResearch() {
      */
     const saveToDatabase = useCallback(async (queryId: string, report: ResearchReport) => {
         try {
-            // Update query status to completed
             await updateQueryStatus(queryId, 'completed', new Date());
-
-            // Save the report
             await saveResearchReport(queryId, report);
-
             console.log('Research saved to database successfully');
         } catch (error) {
             console.error('Failed to save research to database:', error);
@@ -79,10 +82,10 @@ export function useResearch() {
     }, []);
 
     /**
-     * Start a new research session
+     * Start a new research session with real API
      */
     const startResearch = useCallback(async (questionText: string) => {
-        clearAllTimeouts();
+        clearProgress();
 
         const question: ResearchQuestion = {
             id: generateId(),
@@ -102,47 +105,98 @@ export function useResearch() {
 
         // Save query to Supabase if user is logged in
         let queryId: string | null = null;
+        let searchDepth = 'standard';
+
         if (user) {
             try {
                 const query = await createResearchQuery(user.id, questionText);
                 queryId = query.id;
                 setCurrentQueryId(queryId);
-
-                // Update status to researching
                 await updateQueryStatus(queryId, 'researching');
+
+                // Get user's preferred search depth
+                const prefs = await getUserPreferences(user.id);
+                if (prefs?.default_search_depth) {
+                    searchDepth = prefs.default_search_depth;
+                }
             } catch (error) {
                 console.error('Failed to save query to database:', error);
             }
         }
 
-        // Simulate progress updates over time
+        // Show progress updates while waiting for API
+        let progressIndex = 0;
         let sourcesCount = 0;
-        progressMessages.forEach((msg, index) => {
-            const timeout = setTimeout(() => {
-                // Increment sources for analyze steps
-                if (msg.type === 'analyze') {
-                    sourcesCount += Math.floor(Math.random() * 3) + 1;
+
+        const showProgress = () => {
+            if (progressIndex < progressSteps.length) {
+                const step = progressSteps[progressIndex];
+                if (step.type === 'analyze') {
+                    sourcesCount += Math.floor(Math.random() * 3) + 2;
                 }
 
-                const update: ProgressUpdate = {
+                addProgressUpdate({
                     id: generateId(),
-                    message: msg.message,
-                    type: msg.type,
+                    message: step.message,
+                    type: step.type,
                     timestamp: new Date(),
                     sourcesAnalyzed: sourcesCount,
-                };
+                });
+                progressIndex++;
+            }
+        };
 
-                addProgressUpdate(update);
-            }, (index + 1) * 2500); // 2.5 seconds between each update
+        // Show first progress immediately
+        showProgress();
 
-            timeoutsRef.current.push(timeout);
-        });
+        // Then show additional progress every 3 seconds
+        progressIntervalRef.current = setInterval(showProgress, 3000);
 
-        // Complete research after all progress updates
-        const completionTimeout = setTimeout(async () => {
-            const report = findMatchingReport(questionText);
+        try {
+            // Call the research API
+            const response = await fetch('/api/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: questionText, searchDepth }),
+            });
 
-            // Save to database if user is logged in and we have a query ID
+            clearProgress();
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success || !data.report) {
+                throw new Error('Invalid response from research API');
+            }
+
+            const report: ResearchReport = {
+                id: data.report.id || generateId(),
+                question: questionText,
+                executiveSummary: data.report.summary || data.report.executiveSummary || '',
+                sections: (data.report.findings || data.report.sections || []).map((section: { heading?: string; title?: string; content: string; citations?: number[] }, idx: number) => ({
+                    id: `section-${idx + 1}`,
+                    title: section.heading || section.title || `Section ${idx + 1}`,
+                    content: section.content,
+                    citations: section.citations || [],
+                })),
+                sources: (data.report.sources || []).map((s: { id?: string | number; title: string; url: string; publishedDate?: string; author?: string; type?: string; description?: string }, idx: number) => ({
+                    id: typeof s.id === 'number' ? s.id : idx + 1,
+                    title: s.title,
+                    url: s.url,
+                    publishedDate: s.publishedDate || new Date().toISOString().split('T')[0],
+                    author: s.author,
+                    type: (s.type as 'article' | 'report' | 'paper' | 'news' | 'company') || 'article',
+                })),
+                knowledgeGaps: data.report.knowledgeGaps || [],
+                generatedAt: new Date(data.report.generatedAt || Date.now()),
+                researchDuration: 30, // Approximate duration
+            };
+
+            // Save to database if user is logged in
             if (user && queryId) {
                 await saveToDatabase(queryId, report);
             }
@@ -159,18 +213,37 @@ export function useResearch() {
                     phase: 'completed',
                     currentReport: report,
                     conversationHistory: [...prev.conversationHistory, entry],
+                    sourcesAnalyzed: report.sources.length,
                 };
             });
-        }, (progressMessages.length + 1) * 2500);
 
-        timeoutsRef.current.push(completionTimeout);
-    }, [clearAllTimeouts, addProgressUpdate, user, saveToDatabase]);
+        } catch (error) {
+            clearProgress();
+            console.error('Research failed:', error);
+
+            const errorMessage = error instanceof Error ? error.message : 'Research failed';
+
+            // Update query status to failed if we have a query ID
+            if (user && queryId) {
+                try {
+                    await updateQueryStatus(queryId, 'failed');
+                } catch {
+                    // Ignore error updating status
+                }
+            }
+
+            setState(prev => ({
+                ...prev,
+                phase: 'error',
+                error: errorMessage,
+            }));
+        }
+    }, [clearProgress, addProgressUpdate, user, saveToDatabase]);
 
     /**
      * Submit a follow-up question
      */
     const submitFollowUp = useCallback((questionText: string) => {
-        // For demo purposes, start fresh research with new question
         startResearch(questionText);
     }, [startResearch]);
 
@@ -178,22 +251,22 @@ export function useResearch() {
      * Reset to initial state
      */
     const reset = useCallback(() => {
-        clearAllTimeouts();
+        clearProgress();
         setCurrentQueryId(null);
         setState(initialState);
-    }, [clearAllTimeouts]);
+    }, [clearProgress]);
 
     /**
      * Set an error state
      */
     const setError = useCallback((error: string) => {
-        clearAllTimeouts();
+        clearProgress();
         setState(prev => ({
             ...prev,
             phase: 'error',
             error,
         }));
-    }, [clearAllTimeouts]);
+    }, [clearProgress]);
 
     return {
         state,

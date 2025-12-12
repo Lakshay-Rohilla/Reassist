@@ -15,6 +15,7 @@ import {
     Database
 } from 'lucide-react';
 import { useAuth } from './auth';
+import { useTheme } from './ThemeProvider';
 import { getUserPreferences, upsertUserPreferences, DbUserPreferences } from '@/lib/database';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ export function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const { user, isConfigured, signOut } = useAuth();
+    const { theme: currentTheme, setTheme } = useTheme();
     const router = useRouter();
 
     const loadPreferences = useCallback(async () => {
@@ -55,13 +57,17 @@ export function SettingsPage() {
                     default_search_depth: data.default_search_depth || 'standard',
                     email_notifications: data.email_notifications ?? true,
                 });
+                // Sync theme with ThemeProvider
+                if (data.theme) {
+                    setTheme(data.theme);
+                }
             }
         } catch (error) {
             console.error('Failed to load preferences:', error);
         } finally {
             setLoading(false);
         }
-    }, [user, isConfigured]);
+    }, [user, isConfigured, setTheme]);
 
     useEffect(() => {
         if (user && isConfigured) {
@@ -71,12 +77,22 @@ export function SettingsPage() {
         }
     }, [user, isConfigured, loadPreferences]);
 
+    // Sync local preferences with current theme from ThemeProvider
+    useEffect(() => {
+        setPreferences(prev => ({ ...prev, theme: currentTheme }));
+    }, [currentTheme]);
+
     const updatePreference = async <K extends keyof LocalPreferences>(
         key: K,
         value: LocalPreferences[K]
     ) => {
         // Update local state immediately for responsive UI
         setPreferences(prev => ({ ...prev, [key]: value }));
+
+        // If updating theme, also update ThemeProvider
+        if (key === 'theme') {
+            setTheme(value as Theme);
+        }
 
         if (!user || !isConfigured) return;
 

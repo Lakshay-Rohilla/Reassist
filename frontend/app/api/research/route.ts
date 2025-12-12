@@ -126,9 +126,9 @@ export async function POST(request: NextRequest) {
 
         // Adjust model and tokens based on search depth - significantly increased
         const modelConfig = {
-            quick: { model: 'gpt-4-turbo-preview', maxTokens: 4000 },
-            standard: { model: 'gpt-4-turbo-preview', maxTokens: 8000 },
-            comprehensive: { model: 'gpt-4-turbo-preview', maxTokens: 16000 },
+            quick: { model: 'gpt-4o-mini', maxTokens: 4000 },
+            standard: { model: 'gpt-4o', maxTokens: 8000 },
+            comprehensive: { model: 'gpt-4o', maxTokens: 16000 },
         };
 
         const config = modelConfig[searchDepth as keyof typeof modelConfig] || modelConfig.standard;

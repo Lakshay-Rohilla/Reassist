@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize OpenAI client
-function getOpenAIClient() {
-    const apiKey = process.env.OPENAI_API_KEY;
+// Initialize Gemini client
+function getGeminiClient() {
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        throw new Error('OPENAI_API_KEY is not configured');
+        throw new Error('GEMINI_API_KEY is not configured');
     }
-    return new OpenAI({ apiKey });
+    return new GoogleGenerativeAI(apiKey);
 }
 
 // Research prompt templates based on search depth
@@ -54,7 +54,7 @@ When analyzing a research question, you must:
 6. SUGGEST actionable follow-up questions for deeper exploration
 7. PROVIDE ${config.analysis}
 
-FORMAT your response as a JSON object with this EXACT structure:
+FORMAT your response as a JSON object with this EXACT structure (respond ONLY with valid JSON, no markdown):
 {
   "title": "A compelling, descriptive title that captures the essence of the research (15-20 words max)",
   "summary": "A comprehensive executive summary of 4-6 sentences covering the most important findings, key statistics, and main conclusions",
@@ -81,13 +81,13 @@ FORMAT your response as a JSON object with this EXACT structure:
   ],
   "knowledgeGaps": ["Specific areas where more research is needed or data is limited"],
   "followUpQuestions": ["Suggested questions for deeper exploration, each focusing on a different aspect"],
-  "qualityScore": 0.0 to 1.0 rating based on source quality and data availability,
+  "qualityScore": 0.85,
   "researchMetadata": {
-    "sourcesAnalyzed": number,
-    "confidenceLevel": "high | medium | low",
-    "topicComplexity": "low | medium | high",
+    "sourcesAnalyzed": 10,
+    "confidenceLevel": "high",
+    "topicComplexity": "medium",
     "dataRecency": "Description of how recent the available data is",
-    "lastUpdated": "ISO date string"
+    "lastUpdated": "2024-01-01T00:00:00.000Z"
   }
 }
 
@@ -96,7 +96,8 @@ QUALITY STANDARDS:
 - Sources must be real and accessible (use well-known publications, journals, and websites)
 - Statistics should include context and dates when known
 - Analysis should be balanced, presenting multiple viewpoints where applicable
-- Avoid generic statements; be specific and detailed`;
+- Avoid generic statements; be specific and detailed
+- RESPOND ONLY WITH VALID JSON - no markdown code blocks or extra text`;
 };
 
 export async function POST(request: NextRequest) {
@@ -110,25 +111,25 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if OpenAI is configured
-        const apiKey = process.env.OPENAI_API_KEY;
+        // Check if Gemini is configured
+        const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             return NextResponse.json(
                 {
                     error: 'API not configured',
-                    message: 'Please add OPENAI_API_KEY to your .env.local file'
+                    message: 'Please add GEMINI_API_KEY to your .env.local file'
                 },
                 { status: 503 }
             );
         }
 
-        const openai = getOpenAIClient();
+        const genAI = getGeminiClient();
 
-        // Adjust model and tokens based on search depth - significantly increased
+        // Adjust model based on search depth
         const modelConfig = {
-            quick: { model: 'gpt-4o-mini', maxTokens: 4000 },
-            standard: { model: 'gpt-4o', maxTokens: 8000 },
-            comprehensive: { model: 'gpt-4o', maxTokens: 16000 },
+            quick: { model: 'gemini-1.5-flash', maxTokens: 4000 },
+            standard: { model: 'gemini-1.5-pro', maxTokens: 8000 },
+            comprehensive: { model: 'gemini-1.5-pro', maxTokens: 16000 },
         };
 
         const config = modelConfig[searchDepth as keyof typeof modelConfig] || modelConfig.standard;
@@ -148,23 +149,40 @@ Please conduct a thorough research analysis on this topic. Provide:
 
 Focus on delivering actionable insights with evidence-based conclusions.`;
 
-        // Call OpenAI API
-        const completion = await openai.chat.completions.create({
+        // Get the Gemini model
+        const model = genAI.getGenerativeModel({
             model: config.model,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            max_tokens: config.maxTokens,
-            temperature: 0.7,
-            response_format: { type: 'json_object' },
+            generationConfig: {
+                maxOutputTokens: config.maxTokens,
+                temperature: 0.7,
+            }
         });
 
-        const responseContent = completion.choices[0]?.message?.content;
+        // Call Gemini API
+        const result = await model.generateContent([
+            { text: systemPrompt },
+            { text: userPrompt }
+        ]);
+
+        const response = result.response;
+        let responseContent = response.text();
 
         if (!responseContent) {
-            throw new Error('No response from OpenAI');
+            throw new Error('No response from Gemini');
         }
+
+        // Clean up the response - remove markdown code blocks if present
+        responseContent = responseContent.trim();
+        if (responseContent.startsWith('```json')) {
+            responseContent = responseContent.slice(7);
+        }
+        if (responseContent.startsWith('```')) {
+            responseContent = responseContent.slice(3);
+        }
+        if (responseContent.endsWith('```')) {
+            responseContent = responseContent.slice(0, -3);
+        }
+        responseContent = responseContent.trim();
 
         // Parse the JSON response
         let researchData;
@@ -174,7 +192,7 @@ Focus on delivering actionable insights with evidence-based conclusions.`;
             // If parsing fails, create a structured response from raw text
             researchData = {
                 title: 'Research Findings',
-                summary: responseContent.substring(0, 200),
+                summary: responseContent.substring(0, 500),
                 findings: [{ heading: 'Analysis', content: responseContent }],
                 sources: [],
                 keyStatistics: [],

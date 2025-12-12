@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
-import { exampleQuestions } from '@/lib/mock-research';
+import { getRandomQuestions } from '@/lib/mock-research';
 
 interface ResearchInputProps {
     onSubmit: (question: string) => void;
@@ -15,6 +15,9 @@ interface ResearchInputProps {
  */
 export function ResearchInput({ onSubmit, isLoading = false }: ResearchInputProps) {
     const [question, setQuestion] = useState('');
+
+    // Get random questions on each page load/mount
+    const randomQuestions = useMemo(() => getRandomQuestions(3), []);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -128,7 +131,7 @@ export function ResearchInput({ onSubmit, isLoading = false }: ResearchInputProp
                     Try an example research question:
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                    {exampleQuestions.map((example, index) => (
+                    {randomQuestions.map((example, index) => (
                         <motion.button
                             key={index}
                             onClick={() => handleExampleClick(example)}

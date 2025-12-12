@@ -300,12 +300,68 @@ export const sampleReports: Map<string, ResearchReport> = new Map([
     ['competitive landscape cloud', cloudInfrastructureReport],
 ]);
 
-/** Example questions to display in the UI */
-export const exampleQuestions: string[] = [
+/** Large pool of example research questions */
+const allExampleQuestions: string[] = [
+    // Technology
     'What are the emerging trends in electric vehicle battery technology?',
     'How is artificial intelligence being applied in drug discovery?',
     'What is the competitive landscape in cloud infrastructure services?',
+    'What are the latest developments in quantum computing?',
+    'How is blockchain technology being used beyond cryptocurrency?',
+    'What are the key trends in cybersecurity for 2025?',
+    'How is 5G technology transforming industries?',
+    'What are the environmental impacts of data centers?',
+
+    // Business & Finance
+    'What are the emerging fintech trends reshaping banking?',
+    'How is ESG investing affecting corporate strategies?',
+    'What are the key factors driving the growth of e-commerce?',
+    'How is the gig economy changing traditional employment?',
+    'What are the trends in venture capital funding for AI startups?',
+    'How is inflation affecting consumer spending patterns?',
+
+    // Healthcare & Science
+    'What are the latest breakthroughs in cancer immunotherapy?',
+    'How is telemedicine changing healthcare delivery?',
+    'What are the most promising approaches to treating Alzheimers?',
+    'How is CRISPR technology being used in medicine?',
+    'What are the global trends in mental health treatment?',
+    'How is personalized medicine advancing in oncology?',
+
+    // Energy & Environment
+    'What are the innovations in renewable energy storage?',
+    'How is the hydrogen economy developing globally?',
+    'What are the challenges in scaling carbon capture technology?',
+    'How is climate change affecting global agriculture?',
+    'What are the trends in sustainable packaging materials?',
+    'How are cities adapting to rising sea levels?',
+
+    // Society & Culture
+    'How is remote work affecting urban development?',
+    'What are the trends in global higher education?',
+    'How is social media affecting political discourse?',
+    'What are the emerging trends in the creator economy?',
+    'How is AI affecting the job market and employment?',
+    'What are the trends in global migration patterns?',
+
+    // Space & Aviation
+    'What are the developments in commercial space exploration?',
+    'How is the electric aviation industry progressing?',
+    'What are the challenges in establishing a Mars colony?',
+    'How is satellite technology enabling global connectivity?',
 ];
+
+/**
+ * Get a random selection of example questions
+ * Returns different questions each time the page loads
+ */
+export function getRandomQuestions(count: number = 3): string[] {
+    const shuffled = [...allExampleQuestions].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+}
+
+/** Static export for backward compatibility */
+export const exampleQuestions: string[] = allExampleQuestions.slice(0, 3);
 
 /**
  * Generate a dynamic report based on the question topic

@@ -27,8 +27,8 @@ const footerLinks = {
 const socialLinks = [
     { icon: Github, href: 'https://github.com/Lakshay-Rohilla', label: 'GitHub' },
     { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
-    { icon: Linkedin, href: 'https://linkedin.com', label: 'LinkedIn' },
-    { icon: Mail, href: 'mailto:hello@reassist.ai', label: 'Email' },
+    { icon: Linkedin, href: 'www.linkedin.com/in/lakshay-rohilla07', label: 'LinkedIn' },
+    { icon: Mail, href: 'lakshayrohilla89@gmail.com', label: 'Email' },
 ];
 
 export function Footer() {

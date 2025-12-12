@@ -23,8 +23,8 @@ COST_PER_1K_TOKENS = {
         "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
     },
     "google": {
-        "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
-        "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
+        "gemini-2.5-pro": {"input": 0.00125, "output": 0.005},
+        "gemini-2.5-flash": {"input": 0.000075, "output": 0.0003},
     }
 }
 

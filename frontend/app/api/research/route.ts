@@ -1,14 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize Gemini client
-function getGeminiClient() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error('GEMINI_API_KEY is not configured');
-    }
-    return new GoogleGenerativeAI(apiKey);
-}
 
 // Research prompt templates based on search depth
 const getResearchPrompt = (depth: string) => {
@@ -61,26 +51,26 @@ FORMAT your response as a JSON object with this EXACT structure (respond ONLY wi
   "findings": [
     {
       "heading": "Clear, descriptive section heading",
-      "content": "Detailed content with specific facts, data points, statistics, examples, expert quotes, and thorough analysis. Each finding should be a complete mini-report on that aspect of the topic. Include relevant numbers, percentages, dates, and concrete examples. Reference specific studies, reports, or experts where applicable."
+      "content": "Detailed content with specific facts, data points, statistics, examples, expert quotes, and thorough analysis."
     }
   ],
   "sources": [
     {
       "title": "Full source title",
       "url": "https://actual-source-url.com/path",
-      "description": "Detailed description of what this source covers and why it's relevant (2-3 sentences)",
-      "reliability": "high | medium | low",
-      "type": "academic | industry | government | news | company | expert"
+      "description": "Detailed description of what this source covers and why it's relevant",
+      "reliability": "high",
+      "type": "academic"
     }
   ],
   "keyStatistics": [
     {
-      "value": "The statistic value (e.g., '47%', '$2.5 trillion', '3.2 billion')",
-      "context": "What this statistic represents and its significance"
+      "value": "47%",
+      "context": "What this statistic represents"
     }
   ],
-  "knowledgeGaps": ["Specific areas where more research is needed or data is limited"],
-  "followUpQuestions": ["Suggested questions for deeper exploration, each focusing on a different aspect"],
+  "knowledgeGaps": ["Specific areas where more research is needed"],
+  "followUpQuestions": ["Suggested questions for deeper exploration"],
   "qualityScore": 0.85,
   "researchMetadata": {
     "sourcesAnalyzed": 10,
@@ -91,13 +81,7 @@ FORMAT your response as a JSON object with this EXACT structure (respond ONLY wi
   }
 }
 
-QUALITY STANDARDS:
-- Every finding must contain specific, verifiable information
-- Sources must be real and accessible (use well-known publications, journals, and websites)
-- Statistics should include context and dates when known
-- Analysis should be balanced, presenting multiple viewpoints where applicable
-- Avoid generic statements; be specific and detailed
-- RESPOND ONLY WITH VALID JSON - no markdown code blocks or extra text`;
+RESPOND ONLY WITH VALID JSON - no markdown code blocks or extra text.`;
 };
 
 export async function POST(request: NextRequest) {
@@ -111,25 +95,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check if Gemini is configured
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Check if OpenRouter API key is configured
+        const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) {
             return NextResponse.json(
                 {
                     error: 'API not configured',
-                    message: 'Please add GEMINI_API_KEY to your .env.local file'
+                    message: 'Please add OPENROUTER_API_KEY to your environment variables'
                 },
                 { status: 503 }
             );
         }
 
-        const genAI = getGeminiClient();
-
         // Adjust model based on search depth
         const modelConfig = {
-            quick: { model: 'gemini-2.0-flash', maxTokens: 4000 },
-            standard: { model: 'gemini-2.0-flash', maxTokens: 8000 },
-            comprehensive: { model: 'gemini-2.0-flash', maxTokens: 16000 },
+            quick: { model: 'google/gemini-2.0-flash-001', maxTokens: 4000 },
+            standard: { model: 'google/gemini-2.0-flash-001', maxTokens: 8000 },
+            comprehensive: { model: 'google/gemini-2.0-flash-001', maxTokens: 16000 },
         };
 
         const config = modelConfig[searchDepth as keyof typeof modelConfig] || modelConfig.standard;
@@ -137,7 +119,7 @@ export async function POST(request: NextRequest) {
         // Get depth-specific prompt
         const systemPrompt = getResearchPrompt(searchDepth);
 
-        // Enhanced user prompt with more context
+        // Enhanced user prompt
         const userPrompt = `Research Question: ${question}
 
 Please conduct a thorough research analysis on this topic. Provide:
@@ -149,26 +131,36 @@ Please conduct a thorough research analysis on this topic. Provide:
 
 Focus on delivering actionable insights with evidence-based conclusions.`;
 
-        // Get the Gemini model
-        const model = genAI.getGenerativeModel({
-            model: config.model,
-            generationConfig: {
-                maxOutputTokens: config.maxTokens,
+        // Call OpenRouter API
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+                'X-Title': 'ReAssist Research Assistant'
+            },
+            body: JSON.stringify({
+                model: config.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                max_tokens: config.maxTokens,
                 temperature: 0.7,
-            }
+            })
         });
 
-        // Call Gemini API
-        const result = await model.generateContent([
-            { text: systemPrompt },
-            { text: userPrompt }
-        ]);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error?.message || `OpenRouter API error: ${response.status}`);
+        }
 
-        const response = result.response;
-        let responseContent = response.text();
+        const data = await response.json();
+        let responseContent = data.choices?.[0]?.message?.content;
 
         if (!responseContent) {
-            throw new Error('No response from Gemini');
+            throw new Error('No response from OpenRouter');
         }
 
         // Clean up the response - remove markdown code blocks if present

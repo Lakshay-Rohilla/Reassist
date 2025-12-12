@@ -127,9 +127,9 @@ export async function POST(request: NextRequest) {
 
         // Adjust model based on search depth
         const modelConfig = {
-            quick: { model: 'gemini-1.5-flash', maxTokens: 4000 },
-            standard: { model: 'gemini-1.5-pro', maxTokens: 8000 },
-            comprehensive: { model: 'gemini-1.5-pro', maxTokens: 16000 },
+            quick: { model: 'gemini-2.0-flash', maxTokens: 4000 },
+            standard: { model: 'gemini-2.0-flash', maxTokens: 8000 },
+            comprehensive: { model: 'gemini-2.0-flash', maxTokens: 16000 },
         };
 
         const config = modelConfig[searchDepth as keyof typeof modelConfig] || modelConfig.standard;
